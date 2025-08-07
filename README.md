@@ -76,35 +76,69 @@ dotnet restore
 
 ## Configuration
 
-### Connection String Setup
-You'll need to configure your Service Bus connection string in both applications. There are several ways to do this:
+### Passwordless Authentication Setup (Recommended)
+This project uses **Azure Identity** for passwordless authentication, which is Microsoft's recommended approach for security and best practices.
 
-#### Option 1: Environment Variables (Recommended)
-Set the following environment variable:
+#### 1. Configure Azure Service Bus Permissions
+Assign the appropriate role to your Azure account or managed identity:
+
 ```bash
-export AZURE_SERVICE_BUS_CONNECTION_STRING="Endpoint=sb://<namespace>.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=<key>"
+# Get your Azure account object ID
+az ad signed-in-user show --query id -o tsv
+
+# Assign Service Bus Data Owner role (for both sending and receiving)
+az role assignment create \
+  --role "Azure Service Bus Data Owner" \
+  --assignee <your-object-id> \
+  --scope /subscriptions/<subscription-id>/resourceGroups/<resource-group>/providers/Microsoft.ServiceBus/namespaces/<namespace-name>
 ```
 
-#### Option 2: User Secrets (Development)
-```bash
-# For Sender
-cd Sender
-dotnet user-secrets init
-dotnet user-secrets set "ServiceBusConnectionString" "your-connection-string-here"
+**Available Service Bus Roles:**
+- `Azure Service Bus Data Owner`: Full access (send, receive, manage)
+- `Azure Service Bus Data Sender`: Send messages only
+- `Azure Service Bus Data Receiver`: Receive messages only
 
-# For Receiver
-cd ../Receiver
-dotnet user-secrets init
-dotnet user-secrets set "ServiceBusConnectionString" "your-connection-string-here"
+#### 2. Set Environment Variables
+Set the Service Bus namespace and queue name:
+
+```bash
+export AZURE_SERVICE_BUS_NAMESPACE="<your-namespace>.servicebus.windows.net"
+export AZURE_SERVICE_BUS_QUEUE_NAME="demo-queue"
 ```
 
-#### Option 3: appsettings.json
+#### 3. Authentication Methods
+
+**For Local Development:**
+```bash
+# Login to Azure CLI (this sets up default credentials)
+az login
+```
+
+**For Production (using Managed Identity):**
+- Enable System-Assigned or User-Assigned Managed Identity on your Azure resource
+- Assign the appropriate Service Bus role to the managed identity
+- No additional configuration needed in code
+
+#### 4. Configuration Files (Optional)
 Create `appsettings.json` in both Sender and Receiver folders:
 ```json
 {
-  "ServiceBusConnectionString": "your-connection-string-here",
-  "QueueName": "demo-queue"
+  "ServiceBus": {
+    "Namespace": "<your-namespace>.servicebus.windows.net",
+    "QueueName": "demo-queue"
+  }
 }
+```
+
+### Alternative: Connection String (Not Recommended for Production)
+If you need to use connection strings for testing:
+
+```bash
+# Environment variable
+export AZURE_SERVICE_BUS_CONNECTION_STRING="Endpoint=sb://<namespace>.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=<key>"
+
+# Or user secrets
+dotnet user-secrets set "ServiceBusConnectionString" "your-connection-string-here"
 ```
 
 ## Running the Applications
@@ -135,7 +169,7 @@ By working with this project, you'll learn:
 3. **Asynchronous Programming**: Working with async/await patterns
 4. **Message Handling**: Sending, receiving, and processing messages
 5. **Error Handling**: Dealing with connection issues and message failures
-6. **Authentication**: Using connection strings and Azure Identity
+6. **Authentication**: Using Azure Identity for passwordless authentication
 
 ## Key Concepts
 
@@ -154,11 +188,19 @@ By working with this project, you'll learn:
 5. **Abandon**: Consumer releases lock (message becomes available again)
 
 ### Important SDK Classes
-- `ServiceBusClient`: Main client for connecting to Service Bus
+- `ServiceBusClient`: Main client for connecting to Service Bus (supports Azure Identity)
 - `ServiceBusSender`: Sends messages to a queue or topic
 - `ServiceBusReceiver`: Receives messages from a queue or subscription
 - `ServiceBusMessage`: Represents a message
 - `ServiceBusReceivedMessage`: Represents a received message
+- `DefaultAzureCredential`: Automatically handles authentication flow
+
+### Passwordless Authentication Benefits
+- **Enhanced Security**: No secrets to manage or rotate
+- **Simplified Management**: Automatic credential resolution
+- **Production Ready**: Works seamlessly with Managed Identity
+- **Development Friendly**: Uses your Azure CLI login for local development
+- **Zero Trust**: Follows Microsoft's Zero Trust security model
 
 ## Next Steps
 
@@ -185,7 +227,9 @@ By working with this project, you'll learn:
 - [Service Bus Pricing](https://azure.microsoft.com/pricing/details/service-bus/)
 
 ### Tutorials
-- [Service Bus Quickstart](https://docs.microsoft.com/azure/service-bus-messaging/service-bus-dotnet-get-started-with-queues)
+- [Service Bus Quickstart with Azure Identity](https://docs.microsoft.com/azure/service-bus-messaging/service-bus-dotnet-get-started-with-queues)
+- [Azure Identity Documentation](https://docs.microsoft.com/dotnet/api/overview/azure/identity-readme)
+- [Passwordless Authentication Guide](https://docs.microsoft.com/azure/developer/intro/passwordless-overview)
 - [Best Practices](https://docs.microsoft.com/azure/service-bus-messaging/service-bus-performance-improvements)
 
 ### Related Azure Services
