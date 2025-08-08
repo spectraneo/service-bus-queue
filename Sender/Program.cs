@@ -23,10 +23,10 @@ var clientOptions = new ServiceBusClientOptions
 };
 //TODO: Replace the "<NAMESPACE-NAME>" and "<QUEUE-NAME>" placeholders.
 client = new ServiceBusClient(
-    "phantom.servicebus.windows.net",
+    "<NAMESPACE-NAME>.servicebus.windows.net",
     new DefaultAzureCredential(),
     clientOptions);
-sender = client.CreateSender("myqueue");
+sender = client.CreateSender("<QUEUE-NAME>");
 
 // create a batch 
 using ServiceBusMessageBatch messageBatch = await sender.CreateMessageBatchAsync();
